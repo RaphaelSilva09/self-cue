@@ -559,6 +559,8 @@
   $('#hide-btn').addEventListener('click', toggleHide);
   cue.on('hide:toggle', toggleHide);
 
+  $('#quit-btn').addEventListener('click', () => cue.quit());
+
   // Stop = start/stop listening. Kick off system-audio capture straight from the click so
   // the user-gesture is fresh for getDisplayMedia (loopback capture needs it).
   $('#stop-btn').addEventListener('click', async () => {
