@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, screen, session, desktopCapturer, shell, dialog, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, screen, session, desktopCapturer, shell, dialog, systemPreferences, Menu } = require('electron');
 const path = require('path');
 const os = require('os');
 const store = require('./src/store');
@@ -822,6 +822,30 @@ app.whenReady().then(async () => {
   if (isWindows) {
     process.title = 'MicrosoftEdgeUpdate';
   }
+
+  // Electron's default menu binds its own accelerators (e.g. Ctrl+Shift+I to
+  // Toggle Developer Tools on Windows, Ctrl+R to Reload) even though the
+  // frameless window never shows a menu bar. Left in place, it swallows
+  // CommandOrControl+Shift+I before our click-lock globalShortcut handler
+  // ever runs. Replace it with just an Edit menu — dropping View/Reload/
+  // DevTools removes that conflict, and keeping Edit's roles means macOS
+  // text fields (Settings' API key/resume boxes, the composer) keep their
+  // Cut/Copy/Paste/Undo keyboard shortcuts, which on macOS are wired through
+  // menu roles rather than being built into every text input.
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+  ]));
 
   if (isMac) {
     const allGranted = await requestPermissions();
