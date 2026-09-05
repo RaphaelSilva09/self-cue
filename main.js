@@ -32,7 +32,7 @@ let win = null;
 // false when another application already owns the combination, and nothing used
 // to look at that — so the only symptom was a key that did nothing. Iris reads
 // this and can say which key is taken instead of guessing from a screenshot.
-const shortcutState = { assist: false, say: false, leetcode: false, quit: false, clickLock: false };
+const shortcutState = { assist: false, say: false, leetcode: false, hide: false, quit: false, clickLock: false };
 // Click-lock: when true, the window ignores clicks entirely (scroll still works) and
 // can never become the OS-focused/active window, so focus never leaves whatever app
 // the user was using. Off by default — toggled on demand via CommandOrControl+Shift+I.
@@ -678,7 +678,12 @@ function registerShortcuts() {
   shortcutState.assist = globalShortcut.register('Delete', () => runFeature('assist', ''));
   shortcutState.say = globalShortcut.register('CommandOrControl+Shift+Return', () => runFeature('say', ''));
   shortcutState.leetcode = globalShortcut.register('CommandOrControl+H', () => runFeature('leetcode', ''));
-  shortcutState.hide = globalShortcut.register('CommandOrControl+Shift+/', () => send('hide:toggle', {}));
+  // Plain 'Down' (no modifier) rather than a Ctrl/Cmd+Shift+punctuation combo: on
+  // Windows, modifier+punctuation accelerators depend on keyboard-layout scan codes
+  // and can silently fail to fire even when globalShortcut.register() returns true
+  // (see the click-lock/menu-accelerator fix in d5a8c5f for the same class of bug).
+  // A bare named key like 'Down' has no such layout dependency.
+  shortcutState.hide = globalShortcut.register('Down', () => send('hide:toggle', {}));
   shortcutState.quit = globalShortcut.register('CommandOrControl+Shift+X', () => app.quit());
   // focusable/setFocusable is supported on both darwin and win32 (no minimum Windows
   // build, unlike setContentProtection) so this works the same on Windows 10 and 11.

@@ -9,6 +9,10 @@ test('defaults cover the core actions', () => {
   assert.ok(DEFAULTS.clickLock);
 });
 
+test('hide defaults to the bare Down key (no modifier, so it can not be swallowed by layout-dependent accelerator handling on Windows)', () => {
+  assert.strictEqual(DEFAULTS.hide, 'Down');
+});
+
 test('resolveShortcuts merges overrides', () => {
   const map = resolveShortcuts({ leetcode: 'CommandOrControl+L' });
   assert.strictEqual(map.leetcode, 'CommandOrControl+L');

@@ -5,7 +5,7 @@ const DEFAULTS = {
   assist: 'Delete',
   leetcode: 'CommandOrControl+H',
   quit: 'CommandOrControl+Shift+X',
-  hide: 'Shift+Q', // Windows-only convenience (no Cmd key)
+  hide: 'Down', // bare key, no modifier — avoids Windows layout-dependent accelerator failures
   listening: 'CommandOrControl+Shift+L',
   clickLock: 'CommandOrControl+Shift+I',
   screen: 'CommandOrControl+Shift+S'
