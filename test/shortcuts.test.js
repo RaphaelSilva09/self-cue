@@ -6,6 +6,7 @@ test('defaults cover the core actions', () => {
   assert.strictEqual(DEFAULTS.assist, 'Delete');
   assert.ok(DEFAULTS.leetcode);
   assert.ok(DEFAULTS.quit);
+  assert.ok(DEFAULTS.clickLock);
 });
 
 test('resolveShortcuts merges overrides', () => {

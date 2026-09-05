@@ -1603,6 +1603,23 @@
   });
   setIgnore(true); // start fully click-through; hovering the panel re-enables it
 
+  // ---- click lock: blocks every click so the window can never be activated/focused ----
+  // (scroll keeps working — only pointer-button events are blocked, not wheel). Off by
+  // default; toggled via CommandOrControl+Shift+I. The app-link consent dialog and the
+  // mic-permission banner are exempt since they can appear unprompted and need a reply.
+  let clickLocked = false;
+  cue.on('lock:state', (v) => { clickLocked = !!v; });
+  const LOCK_EXEMPT_SELECTOR = cue.lockExemptSelector;
+  function blockIfLocked(e) {
+    if (!clickLocked) return;
+    if (e.target && e.target.closest && e.target.closest(LOCK_EXEMPT_SELECTOR)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+  ['click', 'mousedown', 'mouseup', 'dblclick', 'contextmenu', 'auxclick'].forEach((type) => {
+    document.addEventListener(type, blockIfLocked, true);
+  });
+
   // ---- assistant access request ------------------------------------------
   // Shown here rather than as a native dialog because cue hides its dock icon:
   // an OS panel from an accessory app never comes forward and cannot be

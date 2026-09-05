@@ -30,6 +30,7 @@ cue floats a small glass panel on top of everything. It takes **three separate i
 | **Ask anything** | type + `↵` | your screen + conversation |
 | **Solve a coding problem** | `⌘` `H` (macOS) or `Ctrl` `H` (Windows) | your screen only |
 | **Smart** toggle | pill in the box | switches to a smarter (slower) model |
+| **Click lock** | `Ctrl+Shift+I` (Windows) or `⌘⇧I` (macOS) | blocks every click on cue (scroll still works) and makes the window unfocusable, so the OS focus can never move to it. Off by default. On Windows this is a real guarantee (`WS_EX_NOACTIVATE`); on macOS it's best-effort — Electron/AppKit can still let a click activate the window ([electron#29644](https://github.com/electron/electron/issues/29644)), though clicks are still neutralized so nothing on screen reacts. |
 
 It's a copilot for **live meetings** ("what do I say to that?") and **coding problems** (screenshot → full solution), and it's designed to be **invisible in screen shares** so it stays your private assistant.
 
