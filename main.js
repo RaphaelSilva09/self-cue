@@ -13,6 +13,7 @@ const { AdaptiveVAD, AudioRingBuffer } = require('./src/vad');
 const { buildInterviewContext, detectCategory } = require('./src/interview-context');
 const { startAppLink, stopAppLink, recordEvent, appLinkConsentState, revokeAppLinkCaller } = require('./src/applink');
 const { applyLockState } = require('./src/click-lock');
+const { createSessionHistory } = require('./src/session-history');
 
 // macOS system-audio loopback (the "them" channel via getDisplayMedia) does not
 // start on Electron 31–38 unless these Chromium features are enabled; without
@@ -32,7 +33,7 @@ let win = null;
 // false when another application already owns the combination, and nothing used
 // to look at that — so the only symptom was a key that did nothing. Iris reads
 // this and can say which key is taken instead of guessing from a screenshot.
-const shortcutState = { assist: false, say: false, leetcode: false, hide: false, quit: false, clickLock: false };
+const shortcutState = { assist: false, say: false, leetcode: false, hide: false, quit: false, clickLock: false, clearSession: false };
 // Click-lock: when true, the window ignores clicks entirely (scroll still works) and
 // can never become the OS-focused/active window, so focus never leaves whatever app
 // the user was using. Off by default — toggled on demand via CommandOrControl+Shift+I.
@@ -58,6 +59,10 @@ const state = { capturing: false, busy: false, transcribing: { you: false, them:
 let sttDisabled = false; // set when the key can't reach any speech model (stops retry spam)
 const buffers = { you: [], them: [] };
 const transcript = []; // { channel, text, ts } — capped at MAX_TRANSCRIPT_TURNS
+// Running Assist/Ask/Leetcode conversation for this app session — like a Claude
+// Code session's memory, cleared on demand (Shift+Delete or the Clear session
+// button), never persisted to disk.
+const sessionHistory = createSessionHistory();
 const MAX_TRANSCRIPT_TURNS = 200; // ~30–40 minutes of conversation at normal pace
 const FLUSH_MS = 900;
 const STREAM_INACTIVITY_MS = 25000; // abort a stalled LLM stream so state.busy can't wedge forever
@@ -544,13 +549,15 @@ async function runFeature(mode, userText) {
       };
       rearm();
     });
+    let assistantText = '';
     try {
       await Promise.race([
         llm.stream({
           system,
-          turns: [{ role: 'user', text: built }],
+          turns: [...sessionHistory.getTurns(mode), { role: 'user', text: built }],
           imageDataUrl,
-          onToken: (t) => { if (streamSettled) return; rearm(); send('llm:token', { text: t }); }
+          ...(def.maxTokens ? { maxTokens: def.maxTokens } : {}),
+          onToken: (t) => { if (streamSettled) return; assistantText += t; rearm(); send('llm:token', { text: t }); }
         }),
         stalled
       ]);
@@ -558,6 +565,7 @@ async function runFeature(mode, userText) {
       streamSettled = true;
       clearTimeout(watchdog);
     }
+    sessionHistory.commitPair(mode, built, assistantText);
     send('llm:done', {});
   } catch (e) {
     recordEvent({ level: 'error', event: 'llm_failed', msg: e && e.message ? e.message : String(e), frame: 'runFeature', context: { mode, provider: store.getSettings().provider } });
@@ -628,6 +636,10 @@ ipcMain.handle('transcript:clear', () => {
   transcript.splice(0, transcript.length);
   return { ok: true };
 });
+ipcMain.handle('session:clear', () => {
+  sessionHistory.clear();
+  return { ok: true };
+});
 ipcMain.on('ask', (_e, payload) => runFeature(payload.mode, payload.text));
 ipcMain.on('mic:pcm', (_e, arrayBuffer) => { if (state.capturing) routeAudio('you', arrayBuffer); });
 ipcMain.on('system:pcm', (_e, arrayBuffer) => { if (state.capturing) routeAudio('them', arrayBuffer); });
@@ -691,6 +703,10 @@ function registerShortcuts() {
     clickLocked = !clickLocked;
     if (win) applyLockState(win, clickLocked);
     send('lock:state', clickLocked);
+  });
+  shortcutState.clearSession = globalShortcut.register('Shift+Delete', () => {
+    sessionHistory.clear();
+    send('session:cleared', {});
   });
   for (const [name, wasRegistered] of Object.entries(shortcutState)) {
     if (!wasRegistered) {

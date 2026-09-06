@@ -281,3 +281,64 @@ test('createLLM: leaves a user-chosen current Gemini model alone', () => {
   }));
   assert.equal(llm.model, 'gemini-3.5-flash');
 });
+
+// ---- Multi-turn history + per-mode maxTokens override ----------------------
+// Backs the session-history feature: repeated Assist/Ask/Leetcode calls replay
+// prior turns, and those modes get a generous fixed maxTokens instead of the
+// fast/smart tier default.
+
+function openaiSettings(overrides) {
+  return Object.assign({
+    provider: 'openai',
+    smart: false,
+    apiKeys: { openai: 'test-key' },
+    models: { openai: { fast: 'gpt-4o-mini', smart: 'gpt-4o' } }
+  }, overrides || {});
+}
+
+test('stream(): a multi-turn history array is sent in order, with the image attached only to the last message', async () => {
+  const llm = createLLM(openaiSettings());
+  await llm.stream({
+    system: 'Be concise.',
+    turns: [
+      { role: 'user', text: 'q1' },
+      { role: 'assistant', text: 'a1' },
+      { role: 'user', text: 'q2' }
+    ],
+    imageDataUrl: 'data:image/png;base64,abc123',
+    onToken: () => {}
+  });
+
+  assert.equal(capturedCompletionRequest.messages.length, 4); // system + 3 turns
+  assert.deepEqual(
+    capturedCompletionRequest.messages.map((m) => m.role),
+    ['system', 'user', 'assistant', 'user']
+  );
+  assert.equal(capturedCompletionRequest.messages[1].content, 'q1');
+  assert.equal(capturedCompletionRequest.messages[2].content, 'a1');
+  // Only the last (newest) user turn carries the image.
+  assert.ok(Array.isArray(capturedCompletionRequest.messages[3].content));
+  assert.equal(capturedCompletionRequest.messages[3].content[0].text, 'q2');
+  assert.equal(capturedCompletionRequest.messages[3].content[1].image_url.url, 'data:image/png;base64,abc123');
+});
+
+test('stream(): an explicit maxTokens overrides the smart/fast tier default', async () => {
+  const llm = createLLM(openaiSettings({ smart: false })); // fast tier default would be 700
+  await llm.stream({
+    system: '',
+    turns: [{ role: 'user', text: 'hi' }],
+    maxTokens: 4096,
+    onToken: () => {}
+  });
+  assert.equal(capturedCompletionRequest.max_tokens, 4096);
+});
+
+test('stream(): omitting maxTokens still falls back to the smart/fast tier default (regression guard)', async () => {
+  const fast = createLLM(openaiSettings({ smart: false }));
+  await fast.stream({ system: '', turns: [{ role: 'user', text: 'hi' }], onToken: () => {} });
+  assert.equal(capturedCompletionRequest.max_tokens, 700);
+
+  const smart = createLLM(openaiSettings({ smart: true }));
+  await smart.stream({ system: '', turns: [{ role: 'user', text: 'hi' }], onToken: () => {} });
+  assert.equal(capturedCompletionRequest.max_tokens, 1400);
+});

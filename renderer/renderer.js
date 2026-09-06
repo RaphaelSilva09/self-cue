@@ -599,6 +599,20 @@
     });
   }
 
+  // Clear Assist/Ask/Leetcode session context
+  const clearSessionBtn = document.getElementById('clear-session-btn');
+  function clearSessionUI() {
+    clearMessages();
+    showToast('Session context cleared', 3500);
+  }
+  if (clearSessionBtn) {
+    clearSessionBtn.addEventListener('click', async () => {
+      await cue.clearSession();
+      clearSessionUI();
+    });
+  }
+  cue.on('session:cleared', clearSessionUI);
+
   // ---- capture: mic (renderer side) — uses AudioWorklet (modern, off-main-thread) ----
   let audioCtx = null, micStream = null, micWorklet = null;
   async function startMic() {

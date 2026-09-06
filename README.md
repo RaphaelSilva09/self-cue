@@ -29,6 +29,7 @@ cue floats a small glass panel on top of everything. It takes **three separate i
 | **Recap** | button | the whole conversation |
 | **Ask anything** | type + `↵` | your screen + conversation |
 | **Solve a coding problem** | `⌘` `H` (macOS) or `Ctrl` `H` (Windows) | your screen only |
+| **Clear session** | `Shift+Delete`, or the **Clear session** button | resets the Assist/Ask/coding-problem memory below |
 | **Smart** toggle | pill in the box | switches to a smarter (slower) model |
 | **Click lock** | `Ctrl+Shift+I` (Windows) or `⌘⇧I` (macOS) | blocks every click on cue (scroll still works) and makes the window unfocusable, so the OS focus can never move to it. Off by default. On Windows this is a real guarantee (`WS_EX_NOACTIVATE`); on macOS it's best-effort — Electron/AppKit can still let a click activate the window ([electron#29644](https://github.com/electron/electron/issues/29644)), though clicks are still neutralized so nothing on screen reacts. |
 
@@ -164,8 +165,9 @@ cue is hidden from most screen-share tools automatically — **Google Meet, Micr
 
 > On Windows, press **`Ctrl`** wherever **`⌘`** appears below. cue's own UI relabels the keys to match your OS.
 
-- **`⌘` `↵` — Assist.** The do-the-smart-thing key. On a coding problem it solves it; in a conversation it tells you what to say. Works from anywhere. Change it under **Settings → Keyboard shortcuts**.
+- **`Delete` — Assist.** The do-the-smart-thing key. On a coding problem it solves it; in a conversation it tells you what to say. Works from anywhere. Change it under **Settings → Keyboard shortcuts**.
 - **`⌘` `H` — Solve what's on screen.** Screenshots a coding problem and returns the approach, code, and time/space complexity.
+- **Assist, Ask, and the coding-problem solver share one running conversation** for as long as the app stays open — a later press remembers what an earlier one already answered, the way a Claude Code session keeps context between turns. Press **`Shift+Delete`** or the **Clear session** button (next to the history icon) to start fresh — do this whenever you move to a new problem or level, since old screenshots are never replayed, only the text of what was said.
 - **The `▢` button** (top bar) — start/stop **listening** to a meeting. The green dot means it's live.
 - **Type a question** in the box and press `↵` to ask about your screen or conversation.
 - **Smart** — flip it on for a smarter, more thorough model; off for fast and cheap.
@@ -254,6 +256,7 @@ Run `xattr -cr /Applications/cue.app` in Terminal once (see Install → Option A
 - Your optional résumé text also lives in `cue-data.json` and is sent with each model request to your selected AI provider. It is stored as plain text; clear it in Settings to remove it.
 - In Local transcription mode, microphone and meeting audio stay on your computer. In cloud transcription modes, audio is sent only to the selected speech provider.
 - Audio utterances and the current transcript stay in memory; Cue does not write captured audio to disk. Downloaded local model files remain on disk until you delete them.
+- The Assist/Ask/coding-problem session history is also memory-only — it is never written to disk, and is cleared automatically when you quit or restart cue (or manually with `Shift+Delete`/the Clear session button).
 - Screenshots are sent to your selected chat provider only when a feature needs the screen.
 
 ## Contributing

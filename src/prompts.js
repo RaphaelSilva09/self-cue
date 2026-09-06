@@ -34,6 +34,7 @@ const MODES = {
     userBubble: null,
     small: false,
     resumeMode: 'assist',
+    maxTokens: 4096, // full STAR/technical answers can run past the fast/smart tier default
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
         'You are cue, a discreet real-time copilot overlaid on the user\'s screen during an interview or coding session. ' +
@@ -134,6 +135,7 @@ const MODES = {
     userBubble: null,
     small: false,
     resumeMode: 'ask',
+    maxTokens: 4096, // same rationale as assist — free-form answers can run long
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
         'You are cue, a real-time copilot with access to the candidate\'s screen and live interview. ' +
@@ -184,6 +186,7 @@ const MODES = {
     userBubble: 'Solve what\'s on screen',
     small: false,
     resumeMode: 'leetcode',
+    maxTokens: 4096, // full solution + complexity analysis can exceed the fast/smart tier default
     buildSystem(_contextBlock, _aiRules) {
       // Context block AND aiRules intentionally ignored — code answers must
       // stay strict regardless of personal style or context.
