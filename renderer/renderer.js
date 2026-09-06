@@ -34,12 +34,60 @@
 
   function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+  // LaTeX-ish notation -> plain unicode text. No math-typesetting lib: the
+  // model often emits $...$ / \log / \le / x^2 for complexity notation, and
+  // without this it renders as literal dollar signs and backslashes.
+  const LATEX_SUP = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', '+': '⁺', '-': '⁻', n: 'ⁿ', i: 'ⁱ', k: 'ᵏ' };
+  const LATEX_SUB = { 0: '₀', 1: '₁', 2: '₂', 3: '₃', 4: '₄', 5: '₅', 6: '₆', 7: '₇', 8: '₈', 9: '₉' };
+  const LATEX_SYMBOLS = {
+    le: '≤', ge: '≥', neq: '≠', ne: '≠', approx: '≈', equiv: '≡', pm: '±', mp: '∓',
+    times: '×', cdot: '·', div: '÷', infty: '∞', to: '→', rightarrow: '→', Rightarrow: '⇒',
+    leftarrow: '←', sum: 'Σ', prod: 'Π', int: '∫', partial: '∂', nabla: '∇', forall: '∀',
+    exists: '∃', in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩',
+    emptyset: '∅', therefore: '∴', alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ',
+    epsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ', pi: 'π', sigma: 'σ', tau: 'τ',
+    phi: 'φ', omega: 'ω', Delta: 'Δ', Sigma: 'Σ', Omega: 'Ω',
+  };
+  function convertLatex(expr) {
+    let out = expr;
+    out = out.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1/$2)');
+    out = out.replace(/\\sqrt\{([^{}]+)\}/g, '√($1)').replace(/\\sqrt/g, '√');
+    out = out.replace(/\\(log|min|max|sin|cos|tan|exp|ln|gcd|lcm|arg|det)\b/g, '$1');
+    out = out.replace(/\\left|\\right/g, '');
+    out = out.replace(/\\([A-Za-z]+)/g, (m, name) => LATEX_SYMBOLS[name] || name);
+    out = out.replace(/([\^_])\{([^{}]+)\}/g, (m, op, inner) => {
+      const map = op === '^' ? LATEX_SUP : LATEX_SUB;
+      const mapped = inner.split('').map((c) => map[c]);
+      return mapped.every(Boolean) ? mapped.join('') : `${op}(${inner})`;
+    });
+    out = out.replace(/\^(\S)/g, (m, c) => LATEX_SUP[c] || `^${c}`);
+    out = out.replace(/_(\S)/g, (m, c) => LATEX_SUB[c] || `_${c}`);
+    out = out.replace(/[{}]/g, '');
+    out = out.replace(/\\,|\\;|\\:|\\!/g, ' ');
+    out = out.replace(/\\\\/g, ' ');
+    return out.trim();
+  }
+  // Avoid mangling "$5 and $10" style prose: require real LaTeX markup, or a
+  // pure symbol/number/letter expression with no English filler words.
+  function looksLikeMath(inner) {
+    if (/\\|\^|_/.test(inner)) return true;
+    const trimmed = inner.trim();
+    if (!trimmed) return false;
+    if (/\b(and|or|the|is|was|were|an|of|in|on|at|for|with|total|cost|costs|price|off|each|per)\b/i.test(trimmed)) return false;
+    return /^[A-Za-z0-9+\-*/=(),.\s]+$/.test(trimmed);
+  }
+  function stripLatexMath(s) {
+    s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner) => convertLatex(inner));
+    s = s.replace(/\$([^$\n]+)\$/g, (m, inner) => (looksLikeMath(inner) ? convertLatex(inner) : m));
+    return s;
+  }
+
   // minimal, safe markdown: fenced code, bullets, inline code, bold, paragraphs
   function renderMarkdown(text) {
     const lines = text.split('\n');
     let html = '', inCode = false, inList = false, buf = [];
     const flushP = () => { if (buf.length) { html += '<p>' + inline(buf.join(' ')) + '</p>'; buf = []; } };
-    const inline = (s) => esc(s)
+    const inline = (s) => esc(stripLatexMath(s))
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     for (const raw of lines) {
